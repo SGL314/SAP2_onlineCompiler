@@ -1,0 +1,13 @@
+; Exemplo 4: Teste de Lógica
+; Manipula bits usando rotação e OR.
+
+    MVI A,81H   ; A = 1000 0001
+    RAL         ; Gira à esquerda. O bit 7 vai para o bit 0.
+                ; A agora é 0000 0011 (03H)
+                
+    MVI C,10H   ; C = 0001 0000
+    ORA C       ; A = A | C
+                ; A = (0000 0011) | (0001 0000)
+                ; A agora é 0001 0011 (13H)
+    
+    HLT

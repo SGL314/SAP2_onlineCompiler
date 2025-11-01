@@ -1,0 +1,12 @@
+; Exemplo 1: Teste de Loop 
+; Conta de 5 para 0 em A, e de 0 para 5 em B.
+
+    MVI A,05H   ; A = 5 
+    MVI B,00H   ; B = 0
+    
+loop:
+    INR B       ; B = B + 1
+    DCR A       ; A = A - 1 
+    JNZ loop    ; Pula para 'loop' se a flagZero NÃO for 1 (se A != 0)
+
+    HLT         ; Para quando o JNZ falha (quando A = 0)
