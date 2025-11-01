@@ -4,6 +4,11 @@
   border: 1px solid #444;
   padding: 1em;
 }
+
+.hex-display, .sap2 {
+  margin-bottom: 1em;
+}
+
 .sap2 {
   flex-grow: 1;
 }
@@ -13,9 +18,13 @@
 }
 
 .hex-output {
-  font-size: 1.5em;
+  font-size: 1em;
   color: #9cdcfe;
   margin-top: 0.5em;
+
+  /* cambiarra -> barra de rolagem do hexa-display */
+  overflow-y: auto;  
+  height: 75px;
 }
 
 .output-log {
@@ -24,4 +33,8 @@
   padding: 0.5em;
   height: 40%;
   border: 1px solid #444;
+
+  /* cambiarra -> barra de rolagem do output */
+  overflow-y: auto; 
+  white-space: pre-wrap;
 }

@@ -1,0 +1,14 @@
+; Exemplo 2: Teste de Memória 
+; Soma 15H + 02H, salva em 2000H, depois carrega de volta.
+
+    MVI A,15H   ; A = 15H
+    MVI B,02H   ; B = 02H
+    ADD B       ; A = A + B (A agora é 17H)
+    
+    STA 2000H   ; Salva o valor de A (17H) no endereço 2000H
+    
+    ; Prova que funcionou:
+    MVI A,00H   ; Zera o A
+    LDA 2000H   ; Carrega o valor do endereço 2000H de volta para A
+    
+    HLT

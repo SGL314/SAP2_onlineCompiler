@@ -1,0 +1,12 @@
+; Exemplo 3: Teste de Sub-rotina
+; Chama uma "função" para somar dois números.
+
+    CALL fazer_soma ; Pula para a sub-rotina
+    HLT             ; Para quando a sub-rotina retornar
+
+; --- Definição da Sub-rotina (Função) ---
+fazer_soma:
+    MVI A,10H
+    MVI B,20H
+    ADD B           ; A = 30 (1EH)
+    RET             ; Retorna para a instrução HLT
