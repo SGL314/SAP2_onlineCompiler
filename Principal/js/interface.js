@@ -1,217 +1,148 @@
-// Interface UI do simulador SAP-2.
+// interface.js
+import { auth, db } from "./firebase.js";
+import { ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 
-document.addEventListener('DOMContentLoaded', () => {
+// Elementos principais da UI
+const painel = document.getElementById('painel');
+const painel2 = document.getElementsByClassName('rigth-part')[0];
+const alca = document.getElementById('alca');
+const seletor = document.getElementById('seletor');
+const listaArquivos = document.getElementsByClassName('files')[0];
+const btnSalvar = document.getElementById('button-save');
+const textArea = document.getElementById('textArea');
+const hexDisplay = document.querySelector('.hex-output');
 
-    // Elementos principais da UI
-    const painel = document.getElementById('painel');
-    const painel2 = document.getElementsByClassName('rigth-part')[0];
-    const alca = document.getElementById('alca');
-    const seletor = document.getElementById('seletor');
-    const listaArquivos = document.getElementsByClassName('files')[0];
-    const btnSalvar = document.getElementById('button-save');
-    const textArea = document.getElementById('textArea');
-    const hexDisplay = document.querySelector('.hex-output');
-    
-    let arrastando = false;
-    let arquivos = []; // nomes dos arquivos carregados
+let arrastando = false;
+let arquivos = [];
 
-    // 1) Redimensionamento do painel pela "alça"
-    alca.addEventListener('mousedown', (e) => {
-      arrastando = true;
-      e.preventDefault();
-    });
-  
-    document.addEventListener('mousemove', (e) => {
-      if (arrastando) {
-        const novaLargura = e.clientX;
-        const novaAltura = e.clientY - 20;
-        painel.style.width = novaLargura + 'px';
-        painel.style.height = novaAltura + 'px';
-        painel2.style.height = novaAltura + 'px';
-      }
-    });
-  
-    document.addEventListener('mouseup', () => {
-      arrastando = false;
-    });
+// ===== 1) Redimensionamento do painel =====
+alca.addEventListener('mousedown', e => { arrastando = true; e.preventDefault(); });
+document.addEventListener('mousemove', e => {
+  if (arrastando) {
+    painel.style.width = e.clientX + 'px';
+    painel.style.height = (e.clientY - 20) + 'px';
+    painel2.style.height = (e.clientY - 20) + 'px';
+  }
+});
+document.addEventListener('mouseup', () => { arrastando = false; });
 
-    // 2) Carregar / salvar arquivos
+// ===== 2) Carregar / salvar arquivos =====
+seletor.addEventListener('change', event => {
+  listaArquivos.innerHTML = '';
+  arquivos = [];
+  const arqs = event.target.files;
+  for (let arq of arqs) arquivos.push(arq.name);
 
-    // Botão Salvar: envia o arquivo atual ao backend
-    btnSalvar.addEventListener('click', (event) => {
-      console.log("arquivo: " + event.target.dataset.id);
-      salvarArquivo(event.target.dataset.id);
-    });
-    
-    // Seletor de diretório: popula a lista de arquivos
-    seletor.addEventListener('change', (event) => {
-      listaArquivos.innerHTML = '';
-      const arqs = event.target.files;
-      arquivos = [];
-      
-      for (let arq of arqs) {
-        arquivos.push(arq.name);
-      }
-      console.log("Lendo diretório...");
+  for (let arquivo of arquivos) adicionarArquivoNaLista(arquivo);
+});
 
-      for (let arquivo of arquivos) {
-        const item = document.createElement('button');
-        item.className = "buttonOpenFile";
-        item.dataset.id = arquivo;
+btnSalvar.addEventListener('click', async (event) => {
+  await salvarArquivoFirebase(event.target.dataset.id, textArea.value);
+});
 
-        item.addEventListener('click', () => {
-          document.getElementById('textArea').value = '';
-          document.getElementById("identificador-arquivo-acessado").textContent = arquivo;
-          btnSalvar.dataset.id = arquivo;
-          lerArquivo(arquivo);
-        });
+// ===== Funções Firebase =====
+async function salvarArquivoFirebase(nomeArquivo, conteudo) {
+  if (!nomeArquivo) { alert("Nenhum arquivo selecionado"); return; }
+  try {
+    await set(ref(db, "arquivos/" + nomeArquivo), { conteudo, data: new Date().toISOString() });
+    alert("Arquivo salvo com sucesso!");
+    console.log("Arquivo salvo no Firebase:", nomeArquivo);
+  } catch (e) {
+    console.error("Erro ao salvar arquivo:", e);
+    alert("Erro ao salvar arquivo.");
+  }
+}
 
-        const areaText = document.createElement('h3');
-        areaText.textContent = arquivo;
-        item.appendChild(areaText);
-        listaArquivos.appendChild(item);
-      }
-      console.log("Lista de arquivos populada.");
-    });
+async function lerArquivoFirebase(nomeArquivo) {
+  if (!nomeArquivo) return "";
+  try {
+    const snapshot = await get(child(ref(db), "arquivos/" + nomeArquivo));
+    if (snapshot.exists()) return snapshot.val().conteudo;
+    alert("Arquivo não encontrado!");
+    return "";
+  } catch (e) {
+    console.error("Erro ao ler arquivo:", e);
+    return "";
+  }
+}
 
-    function adicionarArquivoNaLista(nomeArquivo) {
-        if (arquivos.includes(nomeArquivo)) {
-            return; 
-        }
-        
-        arquivos.push(nomeArquivo); 
-        
-        const item = document.createElement('button');
-        item.className = "buttonOpenFile";
-        item.dataset.id = nomeArquivo;
+// ===== 3) Conexão com o simulador (COMPILAR / EXECUTAR) =====
+const botaoCompilar = document.querySelector('.buttons .btn:nth-child(1)');
+const botaoExecutar = document.querySelector('.buttons .btn:nth-child(2)');
 
-        item.addEventListener('click', () => {
-          textArea.value = '';
-          document.getElementById("identificador-arquivo-acessado").textContent = nomeArquivo;
-          btnSalvar.dataset.id = nomeArquivo;
-          lerArquivo(nomeArquivo);
-        });
+botaoCompilar.addEventListener('click', async () => {
+  const codigoFonte = textArea.value;
+  const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;
 
-        const areaText = document.createElement('h3');
-        areaText.textContent = nomeArquivo;
-        item.appendChild(areaText);
-        listaArquivos.appendChild(item); 
-    }
+  if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
+    logOutput("ERRO: Abra um arquivo primeiro", true);
+    return;
+  }
 
-    // Pede ao backend o conteúdo do arquivo (lerArquivo.php)
-    function lerArquivo(arquivo) {
-      const caminho = "../data/files/" + arquivo;
-      fetch('lerArquivo.php?caminho=' + encodeURIComponent(caminho))
-        .then(resp => {
-          if (!resp.ok) throw new Error('Erro: ' + resp.status);
-          return resp.text();
-        })
-        .then(texto => {
-          textArea.value = texto;
-        })
-        .catch(console.error);
-    }
-    
-    // Envia conteúdo para o backend salvar (salvarArquivo.php)
-    function salvarArquivo(arquivo, conteudoParaSalvar = null) {
-      if (!arquivo) {
-        alert("Nenhum arquivo selecionado para salvar.");
-        return;
-      }
-      
-      const caminho = "../data/files/" + arquivo;
-      const conteudo = (conteudoParaSalvar !== null) ? conteudoParaSalvar : textArea.value;
+  const nomeBase = nomeArquivoAtual.split('.')[0];
+  const novoNomeHex = nomeBase + ".hex";
 
-      fetch('salvarArquivo.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `caminho=${encodeURIComponent(caminho)}&conteudo=${encodeURIComponent(conteudo)}`
-      })
-      .then(resp => resp.text())
-      .then(msg => {
-          if (conteudoParaSalvar === null) {
-              alert(msg);
-          }
-          console.log(msg);
-      })
-      .catch(console.error);
-    }
+  const resultado = compilar(codigoFonte);
+  if (resultado.sucesso) {
+    hexDisplay.textContent = resultado.resultado;
+    await salvarArquivoFirebase(novoNomeHex, resultado.resultado);
+    adicionarArquivoNaLista(novoNomeHex);
+    logOutput(`Compilado com sucesso! Salvo como ${novoNomeHex}`, true);
+  } else {
+    hexDisplay.textContent = "--:--:--";
+    logOutput(resultado.resultado, true);
+  }
+});
 
-    // 3) Conexão com o simulador (botões COMPILAR / EXECUTAR)
-    const botaoCompilar = document.querySelector('.buttons .btn:nth-child(1)');
-    const botaoExecutar = document.querySelector('.buttons .btn:nth-child(2)');
+botaoExecutar.addEventListener('click', async () => {
+  if (CPU.estaRodando) {
+    CPU.estaRodando = false;
+    botaoExecutar.textContent = "EXECUTAR";
+    logOutput("Execução parada", false);
+    return;
+  }
 
-    botaoCompilar.addEventListener('click', () => {
-        const codigoFonte = textArea.value;
-        const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;
-        
-        if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
-            logOutput("ERRO: Por favor, abra um arquivo (.txt) primeiro.", true);
-            return;
-        }
+  const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;
+  if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
+    logOutput("ERRO: Nenhum arquivo selecionado", true);
+    return;
+  }
 
-        // Cria o novo nome do arquivo (ex: "file001.txt" -> "file001.hex")
-        const nomeBase = nomeArquivoAtual.split('.')[0];
-        const novoNomeHex = nomeBase + ".hex";
-        
-        const resultado = compilar(codigoFonte); 
+  const nomeBase = nomeArquivoAtual.split('.')[0];
+  const nomeHex = nomeBase + ".hex";
 
-        if (resultado.sucesso) {
+  logOutput(`Tentando executar "${nomeHex}"...`, true);
+  const codigoHex = await lerArquivoFirebase(nomeHex);
+  if (!codigoHex) return;
 
-            hexDisplay.textContent = resultado.resultado;
-            salvarArquivo(novoNomeHex, resultado.resultado); //
-            adicionarArquivoNaLista(novoNomeHex);
-            logOutput(`Compilado com sucesso! Salvo como ${novoNomeHex}`, true);
-        } else {
-            hexDisplay.textContent = "--:--:--";
-            logOutput(resultado.resultado, true);
-        }
-    });
+  resetarCPU();
+  logOutput(`Carregando "${nomeHex}" na memória...`);
+  carregarMemoria(codigoHex);
 
-    // Executar / Parar: controla o estado da CPU do simulador
-    botaoExecutar.addEventListener('click', () => {
-        if (CPU.estaRodando) {
-            CPU.estaRodando = false;
-            botaoExecutar.textContent = "EXECUTAR";
-            logOutput("Execução parada pelo usuário.", false);
-            return;
-        }
+  botaoExecutar.textContent = "PARAR";
+  CPU.estaRodando = true;
+  logOutput("Executando...");
+  executarProximoCiclo();
+});
 
-        const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;
-        if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
-            logOutput("ERRO: Nenhum arquivo selecionado para executar.", true);
-            return;
-        }
-        
-        const nomeBase = nomeArquivoAtual.split('.')[0];
-        const nomeHex = nomeBase + ".hex";
-        
-        logOutput(`Tentando executar "${nomeHex}"...`, true);
+// ===== Função auxiliar =====
+function adicionarArquivoNaLista(nomeArquivo) {
+  if (arquivos.includes(nomeArquivo)) return;
+  arquivos.push(nomeArquivo);
 
-        const caminho = "../data/files/" + nomeHex;
-        fetch('lerArquivo.php?caminho=' + encodeURIComponent(caminho)) //
-            .then(resp => {
-                if (!resp.ok) {
-                    throw new Error(`Arquivo ${nomeHex} não encontrado. Você compilou o código?`);
-                }
-                return resp.text();
-            })
-            .then(codigoHex => {
-                resetarCPU(); 
-                logOutput(`Carregando "${nomeHex}" na memória...`);
-                
-                carregarMemoria(codigoHex); 
-                
-                botaoExecutar.textContent = "PARAR"; 
-                CPU.estaRodando = true;
-                logOutput("Executando...");
-                
-                executarProximoCiclo();
-                
-            })
-            .catch(e => {
-                logOutput(`ERRO: ${e.message}`, false);
-            });
-    });
+  const item = document.createElement('button');
+  item.className = "buttonOpenFile";
+  item.dataset.id = nomeArquivo;
 
-}); 
+  item.addEventListener('click', async () => {
+    textArea.value = '';
+    document.getElementById("identificador-arquivo-acessado").textContent = nomeArquivo;
+    btnSalvar.dataset.id = nomeArquivo;
+    textArea.value = await lerArquivoFirebase(nomeArquivo);
+  });
+
+  const areaText = document.createElement('h3');
+  areaText.textContent = nomeArquivo;
+  item.appendChild(areaText);
+  listaArquivos.appendChild(item);
+}

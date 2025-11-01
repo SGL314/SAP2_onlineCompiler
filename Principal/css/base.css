@@ -55,6 +55,7 @@ h1, h2, h3 {
 .footer {
   text-align: center;
   padding: 1em;
+  margin: 0%;
   background-color: #222;
   border-top: 1px solid #444;
   color: #888;
