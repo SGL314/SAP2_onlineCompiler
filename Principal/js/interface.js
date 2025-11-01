@@ -59,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
         item.className = "buttonOpenFile";
         item.dataset.id = arquivo;
 
-        // Ao clicar em um arquivo: mostra nome, habilita salvar e carrega conteúdo
         item.addEventListener('click', () => {
           document.getElementById('textArea').value = '';
           document.getElementById("identificador-arquivo-acessado").textContent = arquivo;
@@ -114,32 +113,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Envia conteúdo para o backend salvar (salvarArquivo.php)
-    /*function salvarArquivo(arquivo) {
-      const caminho = "../data/files/" + arquivo;
-      const conteudo = textArea.value;
-
-      fetch('salvarArquivo.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `caminho=${encodeURIComponent(caminho)}&conteudo=${encodeURIComponent(conteudo)}`
-      })
-      .then(resp => resp.text())
-      .then(msg => alert(msg))
-      .catch(console.error);
-    }*/
-
     function salvarArquivo(arquivo, conteudoParaSalvar = null) {
-      // Proteção para o caso do usuário clicar em "Salvar" sem arquivo
       if (!arquivo) {
         alert("Nenhum arquivo selecionado para salvar.");
         return;
       }
       
       const caminho = "../data/files/" + arquivo;
-      
-      // ### A CORREÇÃO ESTÁ AQUI ###
-      // Se 'conteudoParaSalvar' NÃO for nulo, use-o.
-      // Senão (para o botão "Salvar" normal), pegue o valor da 'textArea'.
       const conteudo = (conteudoParaSalvar !== null) ? conteudoParaSalvar : textArea.value;
 
       fetch('salvarArquivo.php', {
@@ -149,12 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .then(resp => resp.text())
       .then(msg => {
-          // Só mostra o 'alert' se for o salvamento manual.
-          // O 'compilar' já mostra um log no output.
           if (conteudoParaSalvar === null) {
               alert(msg);
           }
-          console.log(msg); // Log para depuração
+          console.log(msg);
       })
       .catch(console.error);
     }
