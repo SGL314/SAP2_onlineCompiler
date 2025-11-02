@@ -1,0 +1,5 @@
+1000H  3E  81    ; MVI A,81H
+1002H  17        ; RAL
+1003H  0E  10    ; MVI C,10H
+1005H  B1        ; ORA C
+1006H  76        ; HLT

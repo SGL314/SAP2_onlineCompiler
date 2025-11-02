@@ -1,55 +1,10 @@
-let cnv;
-var fios = {
-    "bus": [0, 0, 0, 0, 0, 0, 0, 0],
-    "ir": [0, 0, 0, 0, 0, 0, 0, 0],
-    "temp": [0, 0, 0, 0, 0, 0, 0, 0],
-    "a": [0, 0, 0, 0, 0, 0, 0, 0],
-    "alu": [0, 0],
-    "mar": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "ram": [0, 0, 0, 0, 0, 0, 0, 0]
-}
-
-function setup() {
-    createCanvas(800, 800);
-    // Cria o canvas via p5 normalmente ACTDOWN
-    cnv = createCanvas(800, 800);
-    // Coloca o canvas DENTRO do canvas HTML (substitui o conteúdo)
-    const container = document.getElementById("sap2-canvas").parentNode;
-    document.getElementById("sap2-canvas").remove(); // remove o canvas original
-    cnv.parent(container); // coloca o novo p5 canvas no lugar
-
-    const tamanhoDefault = document.querySelector(".files"); // peg tamanho que define ele, a classe css files
-    const sec = document.querySelector(".sap2");
-    cnv = createCanvas(800, 800);
-    cnv.parent(sec);
-}
-
-function draw() {
-    background("#ffffff");
-    fill(255, 100, 0);
-    const sec = document.querySelector(".files");
-
-    mapSap2();
-
-    activateFio("bus",0,1);
-}
-
-function activateFio(local,numFio, data) {
-    for (let i = 0; i < 8; i++) {
-        if (i == numFio) {
-            fios[local][i] = data;
-        }
-    }
-}
+var rtr = 1, pady = 0; // retortion
+var mrgx = 75/1.5*rtr, mrgy = mrgx; // margins
+var tamFio = 3;
+var gapFioComponent = 2.5;
 
 function mapSap2() {
-    var rtr = 1, pady = 0; // retortion
-    var mrgx = 100 / 3 * rtr, mrgy = mrgx; // margins
-    var tamFio = 3;
-    var gapFioComponent = 2.5;
-
     stroke(1);
-
 
     fill("#4d81c0");
     rect(mrgx, mrgy + 50 * rtr, 200 * rtr, 50 * rtr);// in port
@@ -68,9 +23,6 @@ function mapSap2() {
     rect(mrgx + (200 + 50 * 2 + (8 + 8 - 1) * tamFio + gapFioComponent) * rtr, mrgy + (50 + 50) * rtr * 5 - 50 * rtr * 2, 200 * rtr, 50 * rtr);// C
     rect(mrgx + (200 + 50 * 2 + (8 + 8 - 1) * tamFio + gapFioComponent) * rtr, mrgy + (50 + 50) * rtr * 7 - 50 * rtr * 2, 200 * rtr, 50 * rtr);// out
     // rect(mrgx+(200+50*2+(8+8-1)*tamFio+gapFioComponent)*rtr,mrgy+(50+50)*rtr*7-50*rtr*0,200*rtr,50*rtr);// PC
-
-    // fill("#000000");
-    // line(mrgx,mrgy+50/2*rtr, mrgx+200*rtr, mrgy+50/2*rtr);
 
     // 8 lines
     for (var unity of [0, 1, 2, 3, 4, 5]) {
@@ -148,6 +100,10 @@ function mapSap2() {
         // if (i==1) break;
     }
 
+    // fios saindo do CON
+    fiosCON();
+    //
+
     texts(rtr, mrgx, mrgy, gapFioComponent, tamFio);
     components(rtr, mrgx, mrgy, gapFioComponent, tamFio);
 }
@@ -174,18 +130,216 @@ function components(rtr, mrgx, mrgy, gapFioComponent, tamFio) {
     var tamyArea = 20;
     var tamxArea = 40;
     var gapInner = 5;
+    var texto = "";
     fill("#ffffff");
 
+    // left
+    var dados = [IN,PC,MAR,RAM,MDR,IR,CON];
     for (var i of [1, 2, 3, 4, 5, 6, 7]) {
+        fill("#ffffff");
         rect((200 - tamxArea - gapInner) * rtr + mrgx, mrgy + 50 * rtr * i * 2 - 50 * rtr + (50 - tamyArea) / 2 * rtr, tamxArea * rtr, tamyArea * rtr);
+        texto = dados[i-1].value.toString(16).toUpperCase()+"h";
+        textSize(12);
+        fill("#000000");
+        text(texto,
+            (200 - tamxArea - gapInner) * rtr + mrgx+tamxArea-gapInner-textWidth(texto),
+             mrgy + 50 * rtr * i * 2 - 50 * rtr + (50 - tamyArea) / 2 * rtr + tamyArea/2*rtr + (textAscent()-textDescent())/2);
+            
+        if (!(dados[i-1] instanceof component_register)) continue;
+        if (dados[i-1].receive) fill("#00ff00");
+        else fill("#ff0000");
+        rect(mrgx+tamFio*rtr,mrgy + 50 * rtr * i * 2 - 50 * rtr+50*rtr-gapFioComponent-tamFio*rtr,
+        tamFio*rtr*1.5,tamFio*rtr*1.5);
+
+        if (!(dados[i-1] instanceof component_register)) continue;
+        if (dados[i-1].give) fill("#00ff00");
+        else fill("#ff0000");
+        rect(mrgx+tamFio*rtr,mrgy + 50 * rtr * i * 2 - 50 * rtr+50*rtr-gapFioComponent-tamFio*rtr*3,
+        tamFio*rtr*1.5,tamFio*rtr*1.5);
+        
+        if (!(dados[i-1] instanceof component_PC)) continue;
+        if (dados[i-1].next) fill("#00ff00");
+        else fill("#ff0000");
+        rect(mrgx+tamFio*rtr,mrgy + 50 * rtr * i * 2 - 50 * rtr+50*rtr-gapFioComponent-tamFio*rtr*5,
+        tamFio*rtr*1.5,tamFio*rtr*1.5);
+
     }
 
+    // right
+    var j = 0;
+    dados = [A,ALU,TEMP,B,C,OUT];
     for (var i of [1, 2, 3, 4, 5, 7]) {
+        fill("#ffffff");
         rect((200 - tamxArea - gapInner) * rtr + mrgx + (200 + 50 * 2 + (8 + 8 - 1) * tamFio) * rtr, mrgy + (50 + 50) * rtr * i - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr,
             tamxArea * rtr, tamyArea * rtr);
+        texto = dados[j].value.toString(16).toUpperCase()+"h";
+        textSize(12);
+        fill("#000000");
+        text(texto,(200 - tamxArea - gapInner) * rtr + mrgx + (200 + 50 * 2 + (8 + 8 - 1) * tamFio) * rtr+tamxArea-gapInner-textWidth(texto),
+         mrgy + (50 + 50) * rtr * i - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr+ tamyArea/2*rtr + (textAscent()-textDescent())/2
+             );
+        j++;
     }
 
+    fill("#ffffff");
     rect((200 / 2 - tamxArea - gapInner) * rtr + mrgx + (200 + 200 + 50 + 50 * 2 + (8 + 8 - 1) * tamFio) * rtr,
         mrgy + (50 + 50) * rtr * 2 - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr,
         tamxArea * rtr, tamyArea * rtr);// flag
+
+    texto = CPU.flagZero.toString(16).toUpperCase() + "b "+CPU.flagSignal.toString(16).toUpperCase()+"b";
+    textSize(12);
+    fill("#000000");
+    text(texto,(200 / 2 - tamxArea - gapInner) * rtr + mrgx + (200 + 200 + 50 + 50 * 2 + (8 + 8 - 1) * tamFio) * rtr+tamxArea-gapInner-textWidth(texto),
+        mrgy + (50 + 50) * rtr * 2 - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr+ tamyArea/2*rtr + (textAscent()-textDescent())/2,
+            );
+}
+
+function fiosCON(){
+    tamFio /= 2;
+    var pcoms = [0,1];
+    var pcons = [0,1];
+    var coms = [6,6];
+    var verys = [CON.IRreceive==1,CON.IRgive==1,CON.MARreceive==1];
+    for (var i=0;i<pcoms.length;i++){
+        var pcom = pcoms[i];
+        var pcon = pcons[i];
+        var com = coms[i];
+        
+        if (verys[i]) fill("#00ff00");
+        else fill("#ff0000");
+
+        var tx = (tamFio*3.33333+pcon*5)*rtr,tx2;
+        var ty = tamFio*rtr,ty2;
+        rect(mrgx-tx
+            ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*pcon*rtr,
+            tx,ty);
+        tx2 = tamFio*rtr;
+        ty2 = (50*2)*rtr*(0.5+6-com)+gapFioComponent*2+ty+tamFio*2*(pcon+pcom)*rtr;
+        rect(mrgx-tx
+            ,mrgy+(50+50)*rtr*com-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+            tx2,ty2);
+        rect(mrgx-tx
+            ,mrgy+(50+50)*rtr*com-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+            tx,ty);   
+    }
+    fiostoPC();
+
+    // RAMreceive
+    if (CON.RAMreceive==1) fill("#ff0000");
+    else fill("#4d81c0");
+    var tx = 25*rtr,tx2;
+    var ty = tamFio*rtr,ty2;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*3*rtr,
+        tx,ty);
+     tx2 = tamFio*rtr;
+    ty2 = (50*2)*rtr*2.5+gapFioComponent*2+ty+tamFio*2*3*rtr;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*4-gapFioComponent-(tamFio*2)*0*rtr-ty,
+        tx2,ty2);
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*4-gapFioComponent-(tamFio*2)*0*rtr-ty,
+        tx,ty);
+
+    
+
+    //     if (CON.MARreceive==1) fill("#ff0000");
+    // else fill("#4d81c0");
+    // var tx = 25*rtr,tx2;
+    // var ty = tamFio*rtr,ty2;
+    // rect(mrgx-tx
+    //     ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*3*rtr,
+    //     tx,ty);
+    //  tx2 = tamFio*rtr;
+    // ty2 = (50*2)*rtr*2.5+gapFioComponent*2+ty+tamFio*2*3*rtr;
+    // rect(mrgx-tx
+    //     ,mrgy+(50+50)*rtr*4-gapFioComponent-(tamFio*2)*0*rtr-ty,
+    //     tx2,ty2);
+    // rect(mrgx-tx
+    //     ,mrgy+(50+50)*rtr*4-gapFioComponent-(tamFio*2)*0*rtr-ty,
+    //     tx,ty);
+
+    tamFio *= 2;
+}
+function fiostoPC(){
+    // levelBytePC
+    
+
+    // PCnext
+    if (PC.receive==1) fill("#ff0000");
+    else fill("#4d81c0");
+    var pcom = 0;
+    var pcon = 5;
+
+    var tx = (10+pcon*5)*rtr,tx2;
+    var ty = tamFio*rtr,ty2;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*pcon*rtr,
+        tx,ty);
+    tx2 = tamFio*rtr;
+    ty2 = (50*2)*rtr*4.5+gapFioComponent*2+ty+tamFio*2*(pcon+pcom)*rtr;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx2,ty2);
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx,ty);
+
+    if (PC.give==1) fill("#ff0000");
+    else fill("#4d81c0");
+    var pcom = 1;
+    var pcon = 6;
+
+    var tx = (10+pcon*5)*rtr,tx2;
+    var ty = tamFio*rtr,ty2;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*pcon*rtr,
+        tx,ty);
+    tx2 = tamFio*rtr;
+    ty2 = (50*2)*rtr*4.5+gapFioComponent*2+ty+tamFio*2*(pcon+pcom)*rtr;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx2,ty2);
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx,ty);
+
+    // PCgive
+    if (PC.next==1) fill("#ff0000");
+    else fill("#4d81c0");
+    var pcom = 2;
+    var pcon = 7;
+
+    var tx = (10+pcon*5)*rtr,tx2;
+    var ty = tamFio*rtr,ty2;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*pcon*rtr,
+        tx,ty);
+    tx2 = tamFio*rtr;
+    ty2 = (50*2)*rtr*4.5+gapFioComponent*2+ty+tamFio*2*(pcon+pcom)*rtr;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx2,ty2);
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx,ty);
+
+    if (CON.levelBytePC==1) fill("#ff0000");
+    else fill("#4d81c0");
+    var pcom = 3;
+    var pcon = 8;
+
+    var tx = (10+pcon*5)*rtr,tx2;
+    var ty = tamFio*rtr,ty2;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*7-50*rtr+gapFioComponent+(tamFio*2)*pcon*rtr,
+        tx,ty);
+    tx2 = tamFio*rtr;
+    ty2 = (50*2)*rtr*4.5+gapFioComponent*2+ty+tamFio*2*(pcon+pcom)*rtr;
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx2,ty2);
+    rect(mrgx-tx
+        ,mrgy+(50+50)*rtr*2-gapFioComponent-(tamFio*2)*pcom*rtr-ty,
+        tx,ty);
 }

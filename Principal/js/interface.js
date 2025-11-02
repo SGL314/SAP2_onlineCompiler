@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3) Conexão com o simulador (botões COMPILAR / EXECUTAR)
     const botaoCompilar = document.querySelector('.buttons .btn:nth-child(1)');
     const botaoExecutar = document.querySelector('.buttons .btn:nth-child(2)');
+    const botaoLimparSAP2 = document.querySelector('.buttons .btn:nth-child(5)');
 
     botaoCompilar.addEventListener('click', () => {
         const codigoFonte = textArea.value;
@@ -206,12 +207,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 CPU.estaRodando = true;
                 logOutput("Executando...");
                 
-                executarProximoCiclo();
+                clock();
                 
             })
             .catch(e => {
                 logOutput(`ERRO: ${e.message}`, false);
             });
+    });
+
+    botaoLimparSAP2.addEventListener('click', () =>{
+      // registradores
+      PC = new component_PC();
+      OUT = new component_register();
+      MAR = new component_register();
+      MDR = new component_register();
+      IR = new component_register();
+      A = new component_register();
+      B = new component_register();
+      C = new component_register();
+      TEMP = new component_register();
+
+      // componentes especificos
+      CPU = new geral();
+      CON = new component_CON();
+      RAM = new component_RAM();
+      ALU = new component_ALU();
+      IN = new component_IN();
+
+
+      for (var item in fios){
+        pri(item);
+        for (var  i = 0; i < fios[item].length;i++){
+          fios[item][i] = 0;
+        }
+      }
     });
 
 }); 
