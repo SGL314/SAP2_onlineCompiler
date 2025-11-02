@@ -39,21 +39,12 @@ h1, h2, h3 {
   color: #dcdcaa;
   gap: 10px;
   padding: 0.5em;
-  min-height: 5%;
-  /* min-width: 400px; */
+  min-height: 15%;
   border: 1px solid #444;
 
   max-height: 2em;
+  min-height: 2em;
 }
-
-.editor {
-  flex: 1;
-  background-color: #1e1e1e;
-  border: 1px solid #444;
-  padding: 1em;
-  resize: both;
-}
-
 
 .right-part {
   display: flex;
@@ -64,7 +55,6 @@ h1, h2, h3 {
 .footer {
   text-align: center;
   padding: 1em;
-  margin: 0%;
   background-color: #222;
   border-top: 1px solid #444;
   color: #888;

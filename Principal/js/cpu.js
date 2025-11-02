@@ -79,6 +79,7 @@ function executarProximoCiclo() {
             CPU.B = byte;
             logOutput(`  -> MVI B, ${byte.toString(16).toUpperCase()}H. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`);
             CPU.PC += 2;
+            
             break;
         }
         case "0E": {

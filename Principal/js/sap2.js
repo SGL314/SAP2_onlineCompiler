@@ -1,10 +1,18 @@
 let cnv;
-var fios = [0, 0, 0, 0, 0, 0, 0, 0];
+var fios = {
+    "bus": [0, 0, 0, 0, 0, 0, 0, 0],
+    "ir": [0, 0, 0, 0, 0, 0, 0, 0],
+    "temp": [0, 0, 0, 0, 0, 0, 0, 0],
+    "a": [0, 0, 0, 0, 0, 0, 0, 0],
+    "alu": [0, 0],
+    "mar": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "ram": [0, 0, 0, 0, 0, 0, 0, 0]
+}
 
 function setup() {
     createCanvas(800, 800);
     // Cria o canvas via p5 normalmente ACTDOWN
-    cnv = createCanvas(800,800);
+    cnv = createCanvas(800, 800);
     // Coloca o canvas DENTRO do canvas HTML (substitui o conteúdo)
     const container = document.getElementById("sap2-canvas").parentNode;
     document.getElementById("sap2-canvas").remove(); // remove o canvas original
@@ -12,7 +20,7 @@ function setup() {
 
     const tamanhoDefault = document.querySelector(".files"); // peg tamanho que define ele, a classe css files
     const sec = document.querySelector(".sap2");
-    cnv = createCanvas(sec.clientWidth, sec.clientHeight);
+    cnv = createCanvas(800, 800);
     cnv.parent(sec);
 }
 
@@ -23,19 +31,13 @@ function draw() {
 
     mapSap2();
 
-    // verifica se o tamanho mudou ACTDOWN
-    if ((height !== sec.clientHeight) && (sec.clientHeight <= 800) ) {
-    resizeCanvas(sec.clientHeight, sec.clientHeight);
-    }
-
-    activateFio(0, 1);
-    // activateFio(7,1);
+    activateFio("bus",0,1);
 }
 
-function activateFio(numFio, data) {
+function activateFio(local,numFio, data) {
     for (let i = 0; i < 8; i++) {
         if (i == numFio) {
-            fios[i] = data;
+            fios[local][i] = data;
         }
     }
 }
@@ -79,7 +81,7 @@ function mapSap2() {
         for (let i = 0; i < 8; i++) {
             fill("#4d81c0");
             noStroke();
-            if (fios[i] == 1) {
+            if (fios["bus"][i] == 1) {
                 fill("#ff0000");
             }
             // to bus
@@ -93,7 +95,7 @@ function mapSap2() {
         for (let i = 0; i < 8; i++) {
             fill("#4d81c0");
             noStroke();
-            if (fios[8 - i - 1] == 1) {
+            if (fios["bus"][8 - i - 1] == 1) {
                 fill("#ff0000");
             }
             // to bus
@@ -139,7 +141,7 @@ function mapSap2() {
     for (let i = 0; i < 8; i++) {
         fill("#4d81c0");
         noStroke();
-        if (fios[i] == 1) {
+        if (fios["bus"][i] == 1) {
             fill("#ff0000");
         }
         rect(mrgx + padx + tamFio * rtr * (i + 1) + tamFio * i * rtr, mrgy - 5, tamFio * rtr, ((50 + 50) * 7 - 50 + 5) * rtr);
@@ -175,15 +177,15 @@ function components(rtr, mrgx, mrgy, gapFioComponent, tamFio) {
     fill("#ffffff");
 
     for (var i of [1, 2, 3, 4, 5, 6, 7]) {
-        rect((200-tamxArea-gapInner)*rtr+mrgx,mrgy+50*rtr*i*2-50*rtr+(50-tamyArea)/2*rtr,tamxArea*rtr,tamyArea*rtr);
+        rect((200 - tamxArea - gapInner) * rtr + mrgx, mrgy + 50 * rtr * i * 2 - 50 * rtr + (50 - tamyArea) / 2 * rtr, tamxArea * rtr, tamyArea * rtr);
     }
 
     for (var i of [1, 2, 3, 4, 5, 7]) {
-        rect((200-tamxArea-gapInner)*rtr+mrgx+(200+50*2+(8+8-1)*tamFio)*rtr,mrgy+(50+50)*rtr*i-50*rtr*2+(50-tamyArea)/2*rtr,
-        tamxArea*rtr,tamyArea*rtr);
+        rect((200 - tamxArea - gapInner) * rtr + mrgx + (200 + 50 * 2 + (8 + 8 - 1) * tamFio) * rtr, mrgy + (50 + 50) * rtr * i - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr,
+            tamxArea * rtr, tamyArea * rtr);
     }
 
     rect((200 / 2 - tamxArea - gapInner) * rtr + mrgx + (200 + 200 + 50 + 50 * 2 + (8 + 8 - 1) * tamFio) * rtr,
-     mrgy + (50 + 50) * rtr * 2 - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr,
+        mrgy + (50 + 50) * rtr * 2 - 50 * rtr * 2 + (50 - tamyArea) / 2 * rtr,
         tamxArea * rtr, tamyArea * rtr);// flag
 }

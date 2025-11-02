@@ -14,7 +14,7 @@
 }
 .hex-display, .output{
   min-height: 5.5em;
-  max-height: 6.5em;
+  max-height: 12em;
 }
 
 .hex-output {
@@ -31,7 +31,7 @@
   background-color: #252526;
   color: #dcdcaa;
   padding: 0.5em;
-  height: 40%;
+  height: 55%;
   border: 1px solid #444;
 
   /* cambiarra -> barra de rolagem do output */

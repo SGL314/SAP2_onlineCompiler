@@ -1,3 +1,11 @@
+.editor {
+  flex: 1;
+  background-color: #1e1e1e;
+  border: 1px solid #444;
+  padding: 1em;
+  resize: both;
+}
+
 .editor textarea {
   flex-grow: 1;
   width: 100%;
