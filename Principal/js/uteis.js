@@ -21,6 +21,7 @@ const opcodes = {
 class geral{
    constructor(){
     this.A= 0; this.TEMP= 0;this.B= 0; this.C= 0;
+    this.hz = 25;
 
     // porta in
     this.IN= 0;
@@ -30,14 +31,12 @@ class geral{
     
     // Ponteiro de instrução e flags (0 ou 1)
     this.PC= 0;
-    this.flagZero= 0;
-    this.flagSignal= 0;
     
     // Memória= array de bytes (usado pelo simulador/assembler)
     this.memoria= [];
     
     // Estado de execução
-    this.estaRodando= false
+    this.estaRodando= false;
    }
 };
 class component{
@@ -60,6 +59,24 @@ class component_CON extends component{
     this.MARreceive= 0;
     this.PCgive= 0;
     this.PCreceive= 0;
+
+    this.Agive = 0;
+    this.AgiveInner = 0;
+    this.Areceive = 0;
+    this.Bgive = 0;
+    this.Breceive = 0;
+    this.Cgive = 0;
+    this.Creceive = 0;
+    this.TEMPgive = 0;
+    this.TEMPgiveInner = 0;
+    this.TEMPreceive = 0;
+    this.getIR = 0;
+
+    this.ALUreceiveA = 0;
+    this.ALUreceiveTEMP = 0;
+    this.ALUgive = 0;
+    this.ALUactivate = 0;
+    this.ALUlogic = 0; // 1 som 0 subtração
     
     this.nextCounter = 0;
     this.levelBytePC= 0; // 0 baixo (0-7); 1 alto (8-15)
@@ -68,23 +85,53 @@ class component_CON extends component{
   }
   run(){
     // receiving
-    var values = [this.MARreceive,this.RAMreceive,this.MDRreceive];
-    var targets = [MAR,RAM,MDR];
+    var values = [this.MARreceive,this.RAMreceive,this.MDRreceive,this.IRreceive,this.Areceive,this.Breceive,this.Creceive,this.TEMPreceive];
+    var targets = [MAR,RAM,MDR,IR,A,B,C,TEMP];
     for (var i = 0; i < values.length; i++) {
       targets[i].receive = values[i];
     }
 
     // giving
-    var values = [this.PCgive,this.MDRgive];
-    var targets = [PC,MDR];
+    var values = [this.PCgive,this.MDRgive,this.IRgive,this.Agive,this.Bgive,this.Cgive,this.TEMPgive,this.ALUgive];
+    var targets = [PC,MDR,IR,A,B,C,TEMP,ALU];
     for (var i = 0; i < values.length; i++) {
       targets[i].give = values[i];
     }
+    var values = [this.AgiveInner,this.TEMPgiveInner];
+    var targets = [A,TEMP];
+    for (var i = 0; i < values.length; i++) {
+      targets[i].giveInner = values[i];
+    }
+
     // PC
     PC.next = this.nextCounter;
     if (this.nextCounter) this.nextCounter = 0;
     PC.level = this.levelBytePC;
     MAR.level = this.levelBytePC;
+
+    //ir
+    if (this.getIR) this.#getFromIR();
+
+    //alu 
+    ALU.logic = CON.ALUlogic;
+    ALU.receiveA = CON.ALUreceiveA;
+    ALU.receiveTEMP = CON.ALUreceiveTEMP;
+    ALU.activate = CON.ALUactivate;
+
+  }
+  #getFromIR(){
+    var str = "";
+    for (var i=0;i<8;i++){
+      str += fios["ir"][i];
+    }
+    // pri(str);
+    str = int(str,2);
+    // pri(str);
+    if (str == 0){
+      this.value = "0"+str.toString(16).toUpperCase();
+    }else if (int(this.value) == 0){
+      this.value = ""+str.toString(16).toUpperCase();
+    }else this.value = str.toString(16).toUpperCase();
   }
 }
 
@@ -93,6 +140,54 @@ class component_CON extends component{
 class component_ALU extends component{
   constructor(){
     super();
+    this.receiveA = 0;
+    this.receiveTEMP = 0;
+    this.give = 0;
+    this.activate = 0;
+    this.logic = 0;
+    this.Avalue = 0;
+    this.TEMPvalue = 0;
+
+  }
+  run(){
+    if (this.receiveA){
+      var str = "";
+      for (var i=0;i<8;i++){
+        str += fios["a"][i];
+      }
+      // pri(str);
+      str = int(str,2);
+      console.log(this.value,str);
+      this.Avalue = str.toString(16).toUpperCase();
+    }
+    if (this.receiveTEMP){
+      var str = "";
+      for (var i=0;i<8;i++){
+        str += fios["temp"][i];
+      }
+      // pri(str);
+      str = int(str,2);
+      console.log(this.value,str);
+      this.TEMPvalue = str.toString(16).toUpperCase();
+    }
+    if (this.activate){
+      if (this.logic){
+        this.value = int(int(this.Avalue,16) + int(this.TEMPvalue,16),16);
+      }else{
+        this.value = int(int(this.Avalue,16) - int(this.TEMPvalue,16),16);
+      }
+    }
+    if (this.give) this._putOnBus();
+  }
+  _putOnBus(){
+    var pc = int(this.value,16).toString(2).toUpperCase();
+    var onBus = [0,0,0,0,0,0,0,0];
+    for (var i =7;i>=8-pc.length;i--){
+      onBus[i] = int(pc[i-(8-pc.length)]);
+    }
+    for (var i = 0;i<=7;i++){
+      activateFio("bus",i,onBus[i]);
+    }
   }
 }
 // class component_IR extends component{
@@ -107,18 +202,23 @@ class component_IN extends component{
 }
 
 class component_register extends component{
-  constructor(){
+  constructor(whereALU = ""){
     super();
     this.receive = 0;
     this.give = 0;
     this.level = 0;
+    this.giveInner = 0;
+    this.whereALU = whereALU;
   }
   run(){
     if (this.receive) this.#getFromBus();
     if (this.give) this._putOnBus();
+    if (this.giveInner) this.#putOnALU();
     this._especs();
   }
-  _especs(){} // função vazia para ser sobrescrita
+  _especs(){
+    // if (this.value.length==4) this.value = this.value.toString()[3]+this.value.toString()[4];
+  } // função vazia para ser sobrescrita
   #getFromBus(){
     var str = "";
     for (var i=0;i<8;i++){
@@ -126,25 +226,33 @@ class component_register extends component{
     }
     // pri(str);
     str = int(str,2);
-    // pri(str);
-    if (this.level==0){
-      if (str == 0){
-        this.value = "000"+str.toString(16).toUpperCase();
-      }else if (int(this.value) == 0){
-        this.value = "00"+str.toString(16).toUpperCase();
-      }else this.value = this.value[0]+this.value[1]+str.toString(16).toUpperCase();
-    }else{
-      this.value = str.toString(16).toUpperCase()+this.value[2]+this.value[3];
-    }
+    console.log(this.value,str);
+    this.value = str.toString(16).toUpperCase();    
   }
   _putOnBus(){
-    var str = int(this.value,16).toString(2);
-    pri(str+fios["bus"]);   
-    
-    for (var i=0;i<8-str.length;i++){
-      fios["bus"][i] = int(str[i]);
+    var pc = int(this.value,16).toString(2).toUpperCase();
+    var onBus = [0,0,0,0,0,0,0,0];
+    for (var i =7;i>=8-pc.length;i--){
+      onBus[i] = int(pc[i-(8-pc.length)]);
     }
-    // this.give = 0;
+    for (var i = 0;i<=7;i++){
+      activateFio("bus",i,onBus[i]);
+    }
+    if (this.whereALU=="a"){
+      console.log(onBus);
+    console.log(fios["bus"]);
+    }
+  }
+  #putOnALU(){
+    var pc = int(this.value,16).toString(2).toUpperCase();
+    var onBus = [0,0,0,0,0,0,0,0];
+    for (var i =7;i>=8-pc.length;i--){
+      onBus[i] = int(pc[i-(8-pc.length)]);
+    }
+    // console.log(onBus);
+    for (var i = 0;i<=7;i++){
+      activateFio(this.whereALU,i,onBus[i]);
+    }
   }
 }
 
@@ -184,17 +292,39 @@ class component_MAR extends component_register{
   constructor(){
     super();
   }
+  run(){
+    if (this.receive) this.#getFromBus();
+    if (this.give) this._putOnBus();
+    this._especs();
+  }
   _especs(){
     var pc = int(this.value,16).toString(2).toUpperCase();
-    // pri(pc);
     var onBus = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
     for (var i =15;i>=16-pc.length;i--){
       onBus[i] = int(pc[i-(16-pc.length)]);
     }
     // console.log(onBus);
-    // console.log(onBus);
     for (var i = 0;i<=15;i++){
       activateFio("mar",i,onBus[i]);
+    }
+    // console.log(fios["mar"]);
+  }
+  #getFromBus(){
+    var str = "";
+    for (var i=0;i<8;i++){
+      str += fios["bus"][i];
+    }
+    // pri(str);
+    str = int(str,2);
+    // console.log(this.value,str);
+    if (this.level==0){
+      if (str == 0 || str.toString(16).toUpperCase().length<2){
+        this.value = "000"+str.toString(16).toUpperCase();
+      }else if (int(this.value) == 0){
+        this.value = "0"+str.toString(16).toUpperCase();
+      }else this.value = this.value[0]+this.value[1]+str.toString(16).toUpperCase();
+    }else{
+      this.value = str.toString(16).toUpperCase()+this.value[2]+this.value[3];
     }
   }
 }
@@ -259,6 +389,65 @@ class component_MDR extends component_register{
     this.value = str.toString(16).toUpperCase();
   }
 }
+
+class component_IR extends component_register{
+  constructor(){
+    super();
+    this.receive = 0;
+    this.give = 0;
+    this.level = 0;
+  }
+  run(){
+    if (this.receive) this.#getFromBus();
+    if (this.give) this.#putOnCON();
+    this._especs();
+  }
+  _especs(){} // função vazia para ser sobrescrita
+  #getFromBus(){
+    var str = "";
+    for (var i=0;i<8;i++){
+      str += fios["bus"][i];
+    }
+    // pri(str);
+    str = int(str,2);
+    // pri(str);
+    if (str == 0){
+      this.value = "0"+str.toString(16).toUpperCase();
+    }else if (int(this.value) == 0){
+      this.value = ""+str.toString(16).toUpperCase();
+    }else this.value = str.toString(16).toUpperCase();
+  }
+  _putOnBus(){
+    var str = int(this.value,16).toString(2);
+
+    for (var i=7;i>=8-str.length;i--){
+      fios["bus"][i] = int(str[i-(8-str.length)]);
+    }
+    // this.give = 0;
+  }
+  #putOnCON(){
+    var pc = int(this.value,16).toString(2).toUpperCase();
+    var onBus = [0,0,0,0,0,0,0,0];
+    for (var i =7;i>=8-pc.length;i--){
+      onBus[i] = int(pc[i-(8-pc.length)]);
+    }
+    // pri(onBus);
+    // console.log(onBus);
+    for (var i = 0;i<8;i++){
+      activateFio("ir",i,onBus[i]);
+    }
+    // console.log(onBus,fios["ram"]);
+  }
+}
+
+class component_Flag extends component{
+  constructor(){
+    super();
+    this.zero = 0;
+    this.signal = 0;
+  }
+}
+
 // registradores
 var PC, 
 MAR,
@@ -273,7 +462,7 @@ CPU,
 CON,
 RAM,
 ALU,
-IN;
+IN,Flag;
 
 newAll();
 // componentes especificos
@@ -282,14 +471,15 @@ newAll();
 function newAll(){
   // registradores
   OUT = new component_register();
-  IR = new component_register();
-  A = new component_register();
+  A = new component_register("a");
   B = new component_register();
   C = new component_register();
-  TEMP = new component_register();
+  TEMP = new component_register("temp");
+  Flag = new component_Flag();
   
   // componentes especificos
   CPU = new geral();
+  IR = new component_IR();
   MDR = new component_MDR();
   MAR = new component_MAR();
   PC = new component_PC();
@@ -312,10 +502,10 @@ function logOutput(message, clear = false) {
 }
 
 const sleep = (ms) => {
+  // while(CPU.estaRodando == false){}
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function pri(texto){
   console.log(texto);
-
 }

@@ -32,8 +32,10 @@ function draw() {
     background("#ffffff");
     fill(255, 100, 0);
     const sec = document.querySelector(".files");
-
+    
     mapSap2();
+    document.querySelector('.buttons .btn:nth-child(3)').innerHTML = CPU.hz+" hz";
+    if (!CPU.estaRodando) return;
 
     // roda todos os componentes
     var comps = [CON, RAM, ALU, IN, PC, OUT, MAR, MDR, IR, A, B, C, TEMP];
@@ -42,8 +44,8 @@ function draw() {
     }
 }
 
-function activateFio(local,numFio, data) {
-    for (let i = 0; i < 8; i++) {
+function activateFio(local,numFio,data) {
+    for (let i = 0; i < fios[local].length; i++) {
         if (i == numFio) {
             fios[local][i] = data;
         }
@@ -57,8 +59,8 @@ function activateFio(local,numFio, data) {
 
 // Atualiza flags Zero e Sinal a partir de um valor 8-bit.
 function setFlags(valor) {
-    CPU.flagZero = (valor === 0) ? 1 : 0;
-    CPU.flagSignal = (valor & 0x80) ? 1 : 0;
+    Flag.zero = (valor === 0) ? 1 : 0;
+    Flag.signal = (valor & 0x80) ? 1 : 0;
     logOutput(`    -> Flags Atualizadas: Zero=${CPU.flagZero}, Sinal=${CPU.flagSignal}`);
 }
 
@@ -121,15 +123,24 @@ function carregarMemoria(codigoHex) {
 async function clock(){
     if (!CPU.estaRodando) return;
 
-    var hz = 2;
-    var tempo = 1000/hz;
-    await executarProximoCiclo(tempo);
-    // setTimeout(clock, tempo);
+    var tempo = 1000/CPU.hz;
+    await getInstruction(tempo);
 }
 
-async function executarProximoCiclo(tempo) {
+async function getInstruction(tempo) {
+    await toMDR(tempo);
+    await toIR(tempo);
+    // console.log(IR.receive); 
+    await processCON(tempo);
+
+    // setTimeout(clock, tempo);
+
+    
+}
+async function toMDR(tempo){
+    console.log("<-toMDR");
     await sleep(tempo);
-    CON.levelBytePC= 0;
+    CON.levelBytePC = 0;
     CON.PCgive = 1;
     await sleep(tempo);
     CON.PCgive = 0;
@@ -137,66 +148,93 @@ async function executarProximoCiclo(tempo) {
     await sleep(tempo);
     CON.MARreceive = 0;
     CON.run();
-    pri(MAR.receive);
     await sleep(tempo);
-
     CON.levelBytePC = 1;
     CON.PCgive = 1;
-
     await sleep(tempo);
     CON.MARreceive = 1;
     await sleep(tempo);
     CON.MARreceive = 0;
     await sleep(tempo);
-
     CON.PCgive = 0;
     CON.levelBytePC = 0;
-
     await sleep(tempo);
-
     CON.MDRreceive = 1;
     await sleep(tempo);
     CON.MDRreceive = 0;
+    console.log("->toMDR");
+}
+async function toIR(tempo){
+    console.log("<-toIR");
     CON.MDRgive = 1;
-
-
-    
+    await sleep(tempo);
+    CON.MDRgive = 0;
+    CON.IRreceive = 1;
+    await sleep(tempo);
+    CON.IRreceive = 0;
+    CON.IRgive = 1;
+    await sleep(tempo);
+    CON.IRgive = 0;
+    CON.getIR = 1;
+    await sleep(tempo);  
+    CON.getIR = 0; 
+    console.log("->toIR"); 
 }
 
-function processCON(){
+async function processCON(tempo){
     if (!CPU.estaRodando) return;
 
     // FETCH
     const opcode = RAM.memoria[PC.value];
     const opcodeHex = opcode.toString(16).toUpperCase().padStart(2, '0');
     logOutput(`PC: ${PC.value.toString(16).toUpperCase()}H | Opcode: ${opcodeHex}`, false);
+    
+    await sleep(tempo);
 
     // DECODE && EXECUTE
     switch (opcodeHex) {
 
-        // MVI / instruções com imediato (2 bytes)
+        // MVI / instruções com imediato (2 bytes) OK
         case "3E": {
-            const byte = RAM.memoria[PC.value + 1];
-            CPU.A = byte;
+            CON.nextCounter = 1;
+            await sleep(tempo);
+            await toMDR(tempo);
+            CON.MDRgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.MDRgive = 0;
+
             logOutput(`  -> MVI A, ${byte.toString(16).toUpperCase()}H. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`);
-            PC.value += 2;
             break;
         }
         case "06": {
-            const byte = RAM.memoria[PC.value + 1];
-            CPU.B = byte;
-            logOutput(`  -> MVI B, ${byte.toString(16).toUpperCase()}H. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`);
-            PC.value += 2;
+            CON.nextCounter = 1;
+            await sleep(tempo);
+            await toMDR(tempo);
+            CON.MDRgive = 1;
+            CON.Breceive = 1;
+            await sleep(tempo);
+            CON.Breceive = 0;
+            CON.MDRgive = 0;
 
+            logOutput(`  -> MVI B, ${byte.toString(16).toUpperCase()}H. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`);
             break;
         }
         case "0E": {
-            const byte = RAM.memoria[PC.value + 1];
-            CPU.C = byte;
+             CON.nextCounter = 1;
+            await sleep(tempo);
+            await toMDR(tempo);
+            CON.MDRgive = 1;
+            CON.Creceive = 1;
+            await sleep(tempo);
+            CON.Creceive = 0;
+            CON.MDRgive = 0;
             logOutput(`  -> MVI C, ${byte.toString(16).toUpperCase()}H. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`);
-            PC.value += 2;
+            
             break;
         }
+        // logic imediato NO
         case "E6": {
             const byte = RAM.memoria[PC.value + 1];
             CPU.A = (CPU.A & byte) & 0xFF;
@@ -222,41 +260,384 @@ function processCON(){
             break;
         }
 
-        // Movimentação entre registradores
-        case "78": { CPU.A = CPU.B; logOutput(`  -> MOV A,B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "79": { CPU.A = CPU.C; logOutput(`  -> MOV A,C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "47": { CPU.B = CPU.A; logOutput(`  -> MOV B,A. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "4F": { CPU.C = CPU.A; logOutput(`  -> MOV C,A. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "41": { CPU.B = CPU.C; logOutput(`  -> MOV B,C. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "48": { CPU.C = CPU.B; logOutput(`  -> MOV C,B. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
+        // Movimentação entre registradores OK
+        case "78": { 
+            CON.Areceive = 1;
+            CON.Bgive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.Bgive = 0;
+            logOutput(`  -> MOV A,B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "79": { 
+            CON.Areceive = 1;
+            CON.Cgive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.Cgive = 0; logOutput(`  -> MOV A,C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "47": { 
+            CON.Agive = 1;
+            CON.Breceive = 1;
+            await sleep(tempo);
+            CON.Breceive = 0;
+            CON.Agive = 0;
+            logOutput(`  -> MOV B,A. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); break; }
+        case "4F": { 
+            CON.Agive = 1;
+            await sleep(tempo);
+            CON.Creceive = 1;
+            await sleep(tempo);
+            CON.Creceive = 0;
+            CON.Agive = 0; 
+            logOutput(`  -> MOV C,A. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); break; }
+        case "41": { 
+            CON.Breceive = 1;
+            CON.Cgive = 1;
+            await sleep(tempo);
+            CON.Breceive = 0;
+            CON.Cgive = 0; logOutput(`  -> MOV B,C. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); break; }
+        case "48": { 
+            CON.Creceive = 1;
+            CON.Bgive = 1;
+            await sleep(tempo);
+            CON.Creceive = 0;
+            CON.Bgive = 0; 
+            logOutput(`  -> MOV C,B. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); break; }
 
-        // Incremento / Decremento
-        case "3C": { CPU.A = (CPU.A + 1) & 0xFF; setFlags(CPU.A); logOutput(`  -> INR A. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "04": { CPU.B = (CPU.B + 1) & 0xFF; setFlags(CPU.B); logOutput(`  -> INR B. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "0C": { CPU.C = (CPU.C + 1) & 0xFF; setFlags(CPU.C); logOutput(`  -> INR C. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "3D": { CPU.A = (CPU.A - 1) & 0xFF; setFlags(CPU.A); logOutput(`  -> DCR A. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "05": { CPU.B = (CPU.B - 1) & 0xFF; setFlags(CPU.B); logOutput(`  -> DCR B. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "0D": { CPU.C = (CPU.C - 1) & 0xFF; setFlags(CPU.C); logOutput(`  -> DCR C. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
+        // Incremento / Decremento OK
+        case "3C": {
+            TEMP.value = "1";
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1;
+            await sleep(tempo);
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 1;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0;
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 0;
+            CON.ALUgive = 1;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUreceiveA = 0;
+            await sleep(tempo);
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.ALUgive = 0;
+            setFlags(CPU.A); logOutput(`  -> INR A. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "04": {
+            //
+            CON.Agive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.TEMPreceive = 0;
+            CON.Agive = 0;
+            await sleep(tempo);
+            CON.Bgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Bgive = 0;
+            CON.Areceive = 0;
+            await sleep(tempo);
+            //
+            TEMP.value = "1";
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1;
+            await sleep(tempo);
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 1;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0;
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 0;
+            CON.ALUgive = 1;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUreceiveA = 0;
+            await sleep(tempo);
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.ALUgive = 0;
+            //
+            await sleep(tempo);
+            CON.Bgive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.Bgive = 0;
+            CON.TEMPreceive = 0;
+            await sleep(tempo);
+            CON.Agive = 1;
+            CON.Breceive = 1;
+            await sleep(tempo);
+            CON.Agive = 0;
+            CON.Breceive = 0;
+            await sleep(tempo);
+            CON.TEMPgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.TEMPgive = 0;
+            CON.Areceive = 0;
+            setFlags(CPU.B); logOutput(`  -> INR B. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); break; }
+        case "0C": {//
+            CON.Agive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.TEMPreceive = 0;
+            CON.Agive = 0;
+            await sleep(tempo);
+            CON.Cgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Cgive = 0;
+            CON.Areceive = 0;
+            await sleep(tempo);
+            //
+            TEMP.value = "1";
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1;
+            await sleep(tempo);
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 1;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0;
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 0;
+            CON.ALUgive = 1;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUreceiveA = 0;
+            await sleep(tempo);
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.ALUgive = 0;
+            //
+            await sleep(tempo);
+            CON.Cgive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.Cgive = 0;
+            CON.TEMPreceive = 0;
+            await sleep(tempo);
+            CON.Agive = 1;
+            CON.Creceive = 1;
+            await sleep(tempo);
+            CON.Agive = 0;
+            CON.Creceive = 0;
+            await sleep(tempo);
+            CON.TEMPgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.TEMPgive = 0;
+            CON.Areceive = 0;
+            await sleep(tempo);setFlags(CPU.C); logOutput(`  -> INR C. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); break; }
+        case "3D": {
+            TEMP.value = "1";
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1;
+            await sleep(tempo);
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0;
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 0;
+            CON.ALUgive = 1;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUreceiveA = 0;
+            await sleep(tempo);
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.ALUgive = 0;
+            setFlags(CPU.A); logOutput(`  -> DCR A. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "05": {//
+            CON.Agive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.TEMPreceive = 0;
+            CON.Agive = 0;
+            await sleep(tempo);
+            CON.Bgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Bgive = 0;
+            CON.Areceive = 0;
+            await sleep(tempo);
+            CON.TEMPgive = 1;
+            CON.Breceive = 1;
+            await sleep(tempo);
+            CON.Breceive = 0;
+            CON.TEMPgive = 0;
+            await sleep(tempo);
+            //
+            TEMP.value = "1";
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1;
+            await sleep(tempo);
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0;
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 0;
+            CON.ALUgive = 1;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUreceiveA = 0;
+            await sleep(tempo);
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.ALUgive = 0;
+            //
+            await sleep(tempo);
+            CON.Bgive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.Bgive = 0;
+            CON.TEMPreceive = 0;
+            await sleep(tempo);
+            CON.Agive = 1;
+            CON.Breceive = 1;
+            await sleep(tempo);
+            CON.Agive = 0;
+            CON.Breceive = 0;
+            await sleep(tempo);
+            CON.TEMPgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.TEMPgive = 0;
+            CON.Areceive = 0;setFlags(CPU.B); logOutput(`  -> DCR B. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`); break; }
+        case "0D": {
+            CON.Agive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.TEMPreceive = 0;
+            CON.Agive = 0;
+            await sleep(tempo);
+            CON.Cgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Cgive = 0;
+            CON.Areceive = 0;
+            await sleep(tempo);
+            CON.TEMPgive = 1;
+            CON.Creceive = 1;
+            await sleep(tempo);
+            CON.Creceive = 0;
+            CON.TEMPgive = 0;
+            await sleep(tempo);
+            //
+            TEMP.value = "1";
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1;
+            await sleep(tempo);
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0;
+            CON.ALUlogic = 0;
+            CON.ALUactivate = 0;
+            CON.ALUgive = 1;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUreceiveA = 0;
+            await sleep(tempo);
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.Areceive = 0;
+            CON.ALUgive = 0;
+            //
+            await sleep(tempo);
+            CON.Cgive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.Cgive = 0;
+            CON.TEMPreceive = 0;
+            await sleep(tempo);
+            CON.Agive = 1;
+            CON.Creceive = 1;
+            await sleep(tempo);
+            CON.Agive = 0;
+            CON.Creceive = 0;
+            await sleep(tempo);
+            CON.TEMPgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.TEMPgive = 0;
+            CON.Areceive = 0;
+            setFlags(CPU.C); logOutput(`  -> DCR C. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`); break; }
 
         // Rotação / Complemento / NOP
-        case "17": { const bitAlto = (CPU.A & 0x80) >> 7; CPU.A = ((CPU.A << 1) & 0xFF) | bitAlto; logOutput(`  -> RAL. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "1F": { const bitBaixo = CPU.A & 0x01; CPU.A = (CPU.A >> 1) | (bitBaixo << 7); logOutput(`  -> RAR. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "2F": { CPU.A = (~CPU.A) & 0xFF; logOutput(`  -> CMA. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "00": { logOutput(`  -> NOP.`); PC.value += 1; break; }
+        case "17": { const bitAlto = (CPU.A & 0x80) >> 7; CPU.A = ((CPU.A << 1) & 0xFF) | bitAlto; logOutput(`  -> RAL. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "1F": { const bitBaixo = CPU.A & 0x01; CPU.A = (CPU.A >> 1) | (bitBaixo << 7); logOutput(`  -> RAR. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "2F": { CPU.A = (~CPU.A) & 0xFF; logOutput(`  -> CMA. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "00": { logOutput(`  -> NOP.`); break; }
 
         // Aritmética entre registradores
-        case "80": { CPU.A = (CPU.A + CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> ADD B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "81": { CPU.A = (CPU.A + CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> ADD C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "90": { CPU.A = (CPU.A - CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> SUB B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "91": { CPU.A = (CPU.A - CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> SUB C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
+        case "80": { //ok
+            CON.Bgive = 1;
+            CON.TEMPreceive = 1;
+            await sleep(tempo);
+            CON.Bgive = 0;
+            CON.TEMPreceive = 0;
+            await sleep(tempo);
+            CON.AgiveInner = 1;
+            CON.TEMPgiveInner = 1
+            CON.ALUreceiveA = 1;
+            CON.ALUreceiveTEMP = 1;
+            await sleep(tempo);
+            CON.ALUlogic = 1;
+            CON.ALUactivate = 1;
+            await sleep(tempo);
+            CON.AgiveInner = 0;
+            CON.TEMPgiveInner = 0
+            CON.ALUreceiveA = 0;
+            CON.ALUreceiveTEMP = 0;
+            CON.ALUactivate = 0;
+            CON.ALUlogic = 0;
+
+            await sleep(tempo);
+            CON.ALUgive = 1;
+            CON.Areceive = 1;
+            await sleep(tempo);
+            CON.ALUgive = 0;
+            CON.Areceive = 0;
+
+            setFlags(CPU.A); logOutput(`  -> ADD B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; 
+        }
+        case "81": { CPU.A = (CPU.A + CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> ADD C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "90": { CPU.A = (CPU.A - CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> SUB B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "91": { CPU.A = (CPU.A - CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> SUB C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
 
         // Lógicas entre registradores
-        case "A0": { CPU.A = (CPU.A & CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> ANA B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "A1": { CPU.A = (CPU.A & CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> ANA C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "B0": { CPU.A = (CPU.A | CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> ORA B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "B1": { CPU.A = (CPU.A | CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> ORA C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "A8": { CPU.A = (CPU.A ^ CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> XRA B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
-        case "A9": { CPU.A = (CPU.A ^ CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> XRA C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); PC.value += 1; break; }
+        case "A0": { CPU.A = (CPU.A & CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> ANA B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "A1": { CPU.A = (CPU.A & CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> ANA C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "B0": { CPU.A = (CPU.A | CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> ORA B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "B1": { CPU.A = (CPU.A | CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> ORA C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "A8": { CPU.A = (CPU.A ^ CPU.B) & 0xFF; setFlags(CPU.A); logOutput(`  -> XRA B. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
+        case "A9": { CPU.A = (CPU.A ^ CPU.C) & 0xFF; setFlags(CPU.A); logOutput(`  -> XRA C. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`); break; }
 
         // Acesso à memória (LDA/STA)
         case "3A": {
@@ -371,5 +752,10 @@ function processCON(){
             return;
         }
     }
+
+    CON.nextCounter = 1;
+    await sleep(tempo);
+    // console.log(CPU.estaRodando);
+    clock();
 }
 

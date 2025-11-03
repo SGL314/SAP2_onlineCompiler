@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pede ao backend o conteúdo do arquivo (lerArquivo.php)
     function lerArquivo(arquivo) {
-      const caminho = "../data/files/" + arquivo;
+      const caminho = "../data/files/" + "a_simple001.txt"; //retirar; + arquivo
       fetch('lerArquivo.php?caminho=' + encodeURIComponent(caminho))
         .then(resp => {
           if (!resp.ok) throw new Error('Erro: ' + resp.status);
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
-      const caminho = "../data/files/" + arquivo;
+      const caminho = "../data/files/" + arquivo; //
       const conteudo = (conteudoParaSalvar !== null) ? conteudoParaSalvar : textArea.value;
 
       fetch('salvarArquivo.php', {
@@ -140,11 +140,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3) Conexão com o simulador (botões COMPILAR / EXECUTAR)
     const botaoCompilar = document.querySelector('.buttons .btn:nth-child(1)');
     const botaoExecutar = document.querySelector('.buttons .btn:nth-child(2)');
+    const botaoHz = document.querySelector('.buttons .btn:nth-child(3)');
     const botaoLimparSAP2 = document.querySelector('.buttons .btn:nth-child(5)');
+    // const botaoPausar= document.querySelector('.buttons .btn:nth-child(6)');
 
     botaoCompilar.addEventListener('click', () => {
+        // retirar
+        fetch('lerArquivo.php?caminho=' + encodeURIComponent("../data/files/a_simple001.txt"))
+        .then(resp => {
+          if (!resp.ok) throw new Error('Erro: ' + resp.status);
+          return resp.text();
+        })
+        .then(texto => {
+          textArea.value = texto;
+        })
+        .catch(console.error);
+        //
         const codigoFonte = textArea.value;
-        const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;
+        
+        const nomeArquivoAtual = "a_simple001"; //document.getElementById("identificador-arquivo-acessado").textContent; // retirar
         
         if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
             logOutput("ERRO: Por favor, abra um arquivo (.txt) primeiro.", true);
@@ -178,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;
+        const nomeArquivoAtual = "a_simple001"; // document.getElementById("identificador-arquivo-acessado").textContent;
         if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
             logOutput("ERRO: Nenhum arquivo selecionado para executar.", true);
             return;
@@ -198,7 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return resp.text();
             })
             .then(codigoHex => {
-                codigoHex = "1000H  3E  05    ; MVI A,05H\n1002H  06  05    ; MVI B,05H\n1004H  0E  05    ; MVI C,05H\n1006H  76        ; HLT"; // retirar
+                // codigoHex = "1000H  3E  05    ; MVI A,05H\n1002H  06  07    ; MVI B,07H\n1004H  0E  09    ; MVI C,09H\n1006H  76        ; HLT"; // retirar
+                // 
                 resetarCPU(); 
                 logOutput(`Carregando "${nomeHex}" na memória...`);
                 
@@ -218,8 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     botaoLimparSAP2.addEventListener('click', () =>{
       newAll();
-
-
       for (var item in fios){
         pri(item);
         for (var  i = 0; i < fios[item].length;i++){
@@ -227,5 +240,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+
+    // botaoPausar.addEventListener('click', () =>{
+    //   CPU.estaRodando = (CPU.estaRodando) ? false : true;
+    // });
+
+    botaoHz.addEventListener('click', () =>{
+      var hz = prompt("Velociade em hz (1-100):");
+      CPU.hz = int(hz);
+    });
+
+
 
 }); 

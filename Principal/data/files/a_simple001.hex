@@ -1,4 +1,11 @@
-1000H  3E  05    ; MVI A,05H
-1002H  06  05    ; MVI B,05H
-1004H  0E  05    ; MVI C,05H
-1006H  76        ; HLT
+1000H  3E  10    ; MVI A,10H
+1002H  4F        ; Mov c,a
+1003H  3C        ; INR A
+1004H  47        ; Mov b,a
+1005H  04        ; inr b
+1006H  3D        ; dcr a
+1007H  3D        ; dcr a
+1008H  05        ; dcr b
+1009H  0D        ; dcr c
+100AH  80        ; add b
+100BH  76        ; HLT

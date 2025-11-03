@@ -1,4 +1,16 @@
-MVI A,05H
-MVI B,05H
-MVI C,05H
+MVI A,10H
+Mov c,a
+INR A
+Mov b,a
+inr b
+dcr a
+; 10 12 10
+dcr a
+dcr b
+dcr c   
+; f 11 f
+add b
+; 20 11 f 
 HLT
+
+
