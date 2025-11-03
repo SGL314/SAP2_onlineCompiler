@@ -8,8 +8,10 @@ dcr a
 dcr a
 dcr b
 dcr c   
+
 ; f 11 f
 add b
+
 ; 20 11 f 
 HLT
 

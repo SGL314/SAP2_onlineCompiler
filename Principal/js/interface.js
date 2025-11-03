@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pede ao backend o conteúdo do arquivo (lerArquivo.php)
     function lerArquivo(arquivo) {
-      const caminho = "../data/files/" + "a_simple001.txt"; //retirar; + arquivo
+      const caminho = "../data/files/" + arquivo; //retirar; + arquivo
       fetch('lerArquivo.php?caminho=' + encodeURIComponent(caminho))
         .then(resp => {
           if (!resp.ok) throw new Error('Erro: ' + resp.status);
@@ -145,20 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // const botaoPausar= document.querySelector('.buttons .btn:nth-child(6)');
 
     botaoCompilar.addEventListener('click', () => {
-        // retirar
-        fetch('lerArquivo.php?caminho=' + encodeURIComponent("../data/files/a_simple001.txt"))
-        .then(resp => {
-          if (!resp.ok) throw new Error('Erro: ' + resp.status);
-          return resp.text();
-        })
-        .then(texto => {
-          textArea.value = texto;
-        })
-        .catch(console.error);
-        //
+        
         const codigoFonte = textArea.value;
         
-        const nomeArquivoAtual = "a_simple001"; //document.getElementById("identificador-arquivo-acessado").textContent; // retirar
+        const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent;; //document.getElementById("identificador-arquivo-acessado").textContent; // retirar
         
         if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
             logOutput("ERRO: Por favor, abra um arquivo (.txt) primeiro.", true);
@@ -192,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const nomeArquivoAtual = "a_simple001"; // document.getElementById("identificador-arquivo-acessado").textContent;
+        const nomeArquivoAtual = document.getElementById("identificador-arquivo-acessado").textContent; // document.getElementById("identificador-arquivo-acessado").textContent;
         if (!nomeArquivoAtual || nomeArquivoAtual === "Nenhum arquivo selecionado") {
             logOutput("ERRO: Nenhum arquivo selecionado para executar.", true);
             return;
