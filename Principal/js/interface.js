@@ -198,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return resp.text();
             })
             .then(codigoHex => {
+                codigoHex = "1000H  3E  05    ; MVI A,05H\n1002H  06  05    ; MVI B,05H\n1004H  0E  05    ; MVI C,05H\n1006H  76        ; HLT"; // retirar
                 resetarCPU(); 
                 logOutput(`Carregando "${nomeHex}" na memória...`);
                 
@@ -216,23 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     botaoLimparSAP2.addEventListener('click', () =>{
-      // registradores
-      PC = new component_PC();
-      OUT = new component_register();
-      MAR = new component_register();
-      MDR = new component_register();
-      IR = new component_register();
-      A = new component_register();
-      B = new component_register();
-      C = new component_register();
-      TEMP = new component_register();
-
-      // componentes especificos
-      CPU = new geral();
-      CON = new component_CON();
-      RAM = new component_RAM();
-      ALU = new component_ALU();
-      IN = new component_IN();
+      newAll();
 
 
       for (var item in fios){

@@ -10,7 +10,7 @@ var fios = {
 }
 
 function setup() {
-    createCanvas(800, 800);
+    // createCanvas(800, 800);
     // Cria o canvas via p5 normalmente ACTDOWN
     cnv = createCanvas(800, 800);
     // Coloca o canvas DENTRO do canvas HTML (substitui o conteúdo)
@@ -20,7 +20,7 @@ function setup() {
 
     const tamanhoDefault = document.querySelector(".files"); // peg tamanho que define ele, a classe css files
     const sec = document.querySelector(".sap2");
-    cnv = createCanvas(800, 800);
+    cnv = createCanvas(1000, 1000);
     cnv.parent(sec);
 
     for (let i = 0; i < 8; i++) {
@@ -53,7 +53,7 @@ function activateFio(local,numFio, data) {
 // CPU
 
 // Executor CPU do simulador SAP-2 (fetch-decode-execute).
-// Mantém registradores, memória e executa instruções carregadas em CPU.memoria.
+// Mantém registradores, memória e executa instruções carregadas em RAM.memoria.
 
 // Atualiza flags Zero e Sinal a partir de um valor 8-bit.
 function setFlags(valor) {
@@ -68,10 +68,10 @@ function resetarCPU() {
     CPU.A = 0;
     CPU.B = 0;
     CPU.C = 0;
-    PC.value = 0x2010;
+    PC.value = 0x2000;
     CPU.flagZero = 0;
     CPU.flagSignal = 0;
-    CPU.memoria = [];
+    RAM.memoria = [];
     CPU.estaRodando = false;
     logOutput("CPU Pronta. Aguardando execução...", true);
     for (let i = 0; i < 8; i++) { // reseta os fios do bus
@@ -79,29 +79,31 @@ function resetarCPU() {
     }
 }
 
-// Carrega código formatado (saída do compilador) para CPU.memoria.
+// Carrega código formatado (saída do compilador) para RAM.memoria.
 // Simula memória de 64K (array preenchido).
 function carregarMemoria(codigoHex) {
     const linhas = codigoHex.split('\n');
-    CPU.memoria = new Array(0xFFFF).fill(0); // simula 64K (0x0000..0xFFFE)
+    RAM.memoria = new Array(0xFFFF).fill(0); // simula 64K (0x0000..0xFFFE)
 
     for (let i = 0; i < 8; i++) { // reseta os fios do bus
         activateFio("bus", i, 0);
     }
 
-    linhas.forEach(linha => {
+    linhas.forEach((linha,ind) => {
         if (!linha.trim() || linha.startsWith(';')) return;
-
+        
         const partes = linha.split(';')[0].trim().split(/\s+/);
         const enderecoHex = partes[0].replace('H', '');
         const endereco = parseInt(enderecoHex, 16);
-
+        if (ind == 0) PC.value = endereco;
+        
         if (isNaN(endereco)) return;
-
+        
         const bytes = partes.slice(1);
+        console.log(bytes);    
         bytes.forEach((byte, index) => {
             if (byte) {
-                CPU.memoria[endereco + index] = parseInt(byte, 16);
+                RAM.memoria[endereco + index] = parseInt(byte, 16);
             }
         });
     });
@@ -119,16 +121,18 @@ function carregarMemoria(codigoHex) {
 async function clock(){
     if (!CPU.estaRodando) return;
 
-    var hz = 1;
+    var hz = 2;
     var tempo = 1000/hz;
     await executarProximoCiclo(tempo);
     // setTimeout(clock, tempo);
 }
 
 async function executarProximoCiclo(tempo) {
-    CON.indexAddressFromPC();
     await sleep(tempo);
-    // coloca no MAR
+    CON.levelBytePC= 0;
+    CON.PCgive = 1;
+    await sleep(tempo);
+    CON.PCgive = 0;
     CON.MARreceive = 1;
     await sleep(tempo);
     CON.MARreceive = 0;
@@ -137,13 +141,25 @@ async function executarProximoCiclo(tempo) {
     await sleep(tempo);
 
     CON.levelBytePC = 1;
-    CON.PC
+    CON.PCgive = 1;
 
     await sleep(tempo);
     CON.MARreceive = 1;
     await sleep(tempo);
     CON.MARreceive = 0;
     await sleep(tempo);
+
+    CON.PCgive = 0;
+    CON.levelBytePC = 0;
+
+    await sleep(tempo);
+
+    CON.MDRreceive = 1;
+    await sleep(tempo);
+    CON.MDRreceive = 0;
+    CON.MDRgive = 1;
+
+
     
 }
 
@@ -151,7 +167,7 @@ function processCON(){
     if (!CPU.estaRodando) return;
 
     // FETCH
-    const opcode = CPU.memoria[PC.value];
+    const opcode = RAM.memoria[PC.value];
     const opcodeHex = opcode.toString(16).toUpperCase().padStart(2, '0');
     logOutput(`PC: ${PC.value.toString(16).toUpperCase()}H | Opcode: ${opcodeHex}`, false);
 
@@ -160,14 +176,14 @@ function processCON(){
 
         // MVI / instruções com imediato (2 bytes)
         case "3E": {
-            const byte = CPU.memoria[PC.value + 1];
+            const byte = RAM.memoria[PC.value + 1];
             CPU.A = byte;
             logOutput(`  -> MVI A, ${byte.toString(16).toUpperCase()}H. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`);
             PC.value += 2;
             break;
         }
         case "06": {
-            const byte = CPU.memoria[PC.value + 1];
+            const byte = RAM.memoria[PC.value + 1];
             CPU.B = byte;
             logOutput(`  -> MVI B, ${byte.toString(16).toUpperCase()}H. B = ${CPU.B} (${CPU.B.toString(16).toUpperCase()}H)`);
             PC.value += 2;
@@ -175,14 +191,14 @@ function processCON(){
             break;
         }
         case "0E": {
-            const byte = CPU.memoria[PC.value + 1];
+            const byte = RAM.memoria[PC.value + 1];
             CPU.C = byte;
             logOutput(`  -> MVI C, ${byte.toString(16).toUpperCase()}H. C = ${CPU.C} (${CPU.C.toString(16).toUpperCase()}H)`);
             PC.value += 2;
             break;
         }
         case "E6": {
-            const byte = CPU.memoria[PC.value + 1];
+            const byte = RAM.memoria[PC.value + 1];
             CPU.A = (CPU.A & byte) & 0xFF;
             setFlags(CPU.A);
             logOutput(`  -> ANI ${byte.toString(16).toUpperCase()}H. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`);
@@ -190,7 +206,7 @@ function processCON(){
             break;
         }
         case "F6": {
-            const byte = CPU.memoria[PC.value + 1];
+            const byte = RAM.memoria[PC.value + 1];
             CPU.A = (CPU.A | byte) & 0xFF;
             setFlags(CPU.A);
             logOutput(`  -> ORI ${byte.toString(16).toUpperCase()}H. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`);
@@ -198,7 +214,7 @@ function processCON(){
             break;
         }
         case "EE": {
-            const byte = CPU.memoria[PC.value + 1];
+            const byte = RAM.memoria[PC.value + 1];
             CPU.A = (CPU.A ^ byte) & 0xFF;
             setFlags(CPU.A);
             logOutput(`  -> XRI ${byte.toString(16).toUpperCase()}H. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`);
@@ -244,19 +260,19 @@ function processCON(){
 
         // Acesso à memória (LDA/STA)
         case "3A": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const enderecoAlvo = (byteAlto << 8) | byteBaixo;
-            CPU.A = CPU.memoria[enderecoAlvo];
+            CPU.A = RAM.memoria[enderecoAlvo];
             logOutput(`  -> LDA ${enderecoAlvo.toString(16).toUpperCase()}H. A = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H)`);
             PC.value += 3;
             break;
         }
         case "32": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const enderecoAlvo = (byteAlto << 8) | byteBaixo;
-            CPU.memoria[enderecoAlvo] = CPU.A;
+            RAM.memoria[enderecoAlvo] = CPU.A;
             logOutput(`  -> STA ${enderecoAlvo.toString(16).toUpperCase()}H. (Memória[${enderecoAlvo.toString(16).toUpperCase()}H] = ${CPU.A} (${CPU.A.toString(16).toUpperCase()}H))`);
             PC.value += 3;
             break;
@@ -264,16 +280,16 @@ function processCON(){
 
         // Saltos condicionais e incondicionais
         case "C3": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const novoPC = (byteAlto << 8) | byteBaixo;
             logOutput(`  -> JMP ${novoPC.toString(16).toUpperCase()}H`);
             PC.value = novoPC;
             break;
         }
         case "CA": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const novoPC = (byteAlto << 8) | byteBaixo;
             if (CPU.flagZero === 1) {
                 logOutput(`  -> JZ ${novoPC.toString(16).toUpperCase()}H. (Flag Zero=1) PULO EXECUTADO.`);
@@ -285,8 +301,8 @@ function processCON(){
             break;
         }
         case "C2": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const novoPC = (byteAlto << 8) | byteBaixo;
             if (CPU.flagZero === 0) {
                 logOutput(`  -> JNZ ${novoPC.toString(16).toUpperCase()}H. (Flag Zero=0) PULO EXECUTADO.`);
@@ -298,8 +314,8 @@ function processCON(){
             break;
         }
         case "FA": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const novoPC = (byteAlto << 8) | byteBaixo;
             if (CPU.flagSignal === 1) {
                 logOutput(`  -> JM ${novoPC.toString(16).toUpperCase()}H. (Flag Sinal=1) PULO EXECUTADO.`);
@@ -313,21 +329,21 @@ function processCON(){
 
         // CALL/RET: usa área fixa 0xFFFD/0xFFFE para salvar endereço de retorno.
         case "CD": {
-            const byteBaixo = CPU.memoria[PC.value + 1];
-            const byteAlto = CPU.memoria[PC.value + 2];
+            const byteBaixo = RAM.memoria[PC.value + 1];
+            const byteAlto = RAM.memoria[PC.value + 2];
             const enderecoSubrotina = (byteAlto << 8) | byteBaixo;
             const enderecoRetorno = PC.value + 3;
             const returnAlto = (enderecoRetorno >> 8) & 0xFF;
             const returnBaixo = enderecoRetorno & 0xFF;
-            CPU.memoria[0xFFFD] = returnBaixo;
-            CPU.memoria[0xFFFE] = returnAlto;
+            RAM.memoria[0xFFFD] = returnBaixo;
+            RAM.memoria[0xFFFE] = returnAlto;
             logOutput(`  -> CALL ${enderecoSubrotina.toString(16).toUpperCase()}H. (Retorno salvo: ${enderecoRetorno.toString(16).toUpperCase()}H)`);
             PC.value = enderecoSubrotina;
             break;
         }
         case "C9": {
-            const returnBaixo = CPU.memoria[0xFFFD];
-            const returnAlto = CPU.memoria[0xFFFE];
+            const returnBaixo = RAM.memoria[0xFFFD];
+            const returnAlto = RAM.memoria[0xFFFE];
             const enderecoRetorno = (returnAlto << 8) | returnBaixo;
             logOutput(`  -> RET. (Pulando de volta para ${enderecoRetorno.toString(16).toUpperCase()}H)`);
             PC.value = enderecoRetorno;
